@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>出資と収益配分シミュレーター</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-white text-gray-800">
+
+  <div class="mx-auto max-w-5xl p-8 space-y-10">
+    <h1 class="text-center text-3xl font-bold tracking-tight">出資と収益配分シミュレーター</h1>
+
+    <!-- 入力セクション -->
+    <div class="border border-gray-200 shadow-sm rounded-lg p-8 space-y-8">
+      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <label class="text-sm font-medium text-gray-700">開発費用</label>
+          <input id="totalCost" type="text" inputmode="numeric" pattern="[0-9,]*" value="1,000,000"
+            class="mt-1 w-full border border-gray-300 rounded-md text-right p-2 shadow-sm focus:ring-2 focus:ring-indigo-500"/>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-gray-700">行事の出資額</label>
+          <input id="a" type="text" inputmode="numeric" pattern="[0-9,]*" value="500,000"
+            class="mt-1 w-full border border-gray-300 rounded-md text-right p-2 shadow-sm focus:ring-2 focus:ring-indigo-500"/>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-gray-700">加藤の出資額</label>
+          <input id="b" type="text" inputmode="numeric" pattern="[0-9,]*" value="300,000"
+            class="mt-1 w-full border border-gray-300 rounded-md text-right p-2 shadow-sm focus:ring-2 focus:ring-indigo-500"/>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-gray-700">松永の出資額</label>
+          <input id="c" type="text" inputmode="numeric" pattern="[0-9,]*" value="200,000"
+            class="mt-1 w-full border border-gray-300 rounded-md text-right p-2 shadow-sm focus:ring-2 focus:ring-indigo-500"/>
+        </div>
+        <div class="lg:col-span-4">
+          <label class="text-sm font-medium text-gray-700">アイデア採用者</label>
+          <select id="owner" class="mt-1 w-full border border-gray-300 rounded-md p-2 shadow-sm focus:ring-2 focus:ring-indigo-500">
+            <option value="A">行事</option>
+            <option value="B">加藤</option>
+            <option value="C">松永</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- エラー表示 -->
+    <p id="error" class="text-center text-sm font-semibold text-red-600 hidden"></p>
+
+    <!-- 結果表示 -->
+    <div id="result" class="hidden border border-gray-200 shadow-sm rounded-lg p-8">
+      <h2 class="mb-6 text-center text-xl font-semibold">計算結果</h2>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50 text-gray-600 uppercase tracking-wider">
+            <tr>
+              <th class="px-4 py-3 text-left">項目</th>
+              <th class="px-4 py-3 text-right">行事</th>
+              <th class="px-4 py-3 text-right">加藤</th>
+              <th class="px-4 py-3 text-right">松永</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-2 text-left">出資額 (円)</td>
+              <td id="aAmount" class="px-4 py-2 text-right"></td>
+              <td id="bAmount" class="px-4 py-2 text-right"></td>
+              <td id="cAmount" class="px-4 py-2 text-right"></td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-2 text-left">収益分配率</td>
+              <td id="aShare" class="px-4 py-2 text-right"></td>
+              <td id="bShare" class="px-4 py-2 text-right"></td>
+              <td id="cShare" class="px-4 py-2 text-right"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const parseNumber = s => Number(s.replace(/,/g, '')) || 0;
+    const sanitize = v => {
+      const d = v.replace(/[^0-9]/g, '');
+      return d === '' ? '' : Number(d).toLocaleString();
+    };
+
+    const inputs = ['totalCost', 'a', 'b', 'c', 'owner'];
+    inputs.forEach(id => {
+      document.getElementById(id).addEventListener('input', update);
+      if (id === 'owner') {
+        document.getElementById(id).addEventListener('change', update);
+      }
+    });
+
+    function update() {
+      const total = parseNumber(document.getElementById('totalCost').value);
+      const a = parseNumber(document.getElementById('a').value);
+      const b = parseNumber(document.getElementById('b').value);
+      const c = parseNumber(document.getElementById('c').value);
+      const owner = document.getElementById('owner').value;
+
+      const sum = a + b + c;
+
+      if (sum > total) {
+        showError("出資額の合計が行事出資額（総費用）を超えています。");
+        return;
+      }
+
+      const base = {
+        A: total === 0 ? 0 : (a / total) * 100,
+        B: total === 0 ? 0 : (b / total) * 100,
+        C: total === 0 ? 0 : (c / total) * 100
+      };
+
+      const bonus = owner === 'A' ? 0 : 5;
+      const adj = { ...base };
+      adj[owner] += bonus;
+
+      const others = ['A', 'B', 'C'].filter(k => k !== owner);
+      const othersSum = others.reduce((s, k) => s + base[k], 0);
+      if (bonus > 0 && othersSum > 0) {
+        others.forEach(k => {
+          adj[k] -= (base[k] / othersSum) * bonus;
+        });
+      }
+
+      const round1 = n => Math.round(n * 10) / 10;
+
+      document.getElementById('aAmount').textContent = a.toLocaleString();
+      document.getElementById('bAmount').textContent = b.toLocaleString();
+      document.getElementById('cAmount').textContent = c.toLocaleString();
+      document.getElementById('aShare').textContent = round1(adj.A) + '%';
+      document.getElementById('bShare').textContent = round1(adj.B) + '%';
+      document.getElementById('cShare').textContent = round1(adj.C) + '%';
+
+      document.getElementById('result').classList.remove('hidden');
+      document.getElementById('error').classList.add('hidden');
+    }
+
+    function showError(msg) {
+      document.getElementById('error').textContent = msg;
+      document.getElementById('error').classList.remove('hidden');
+      document.getElementById('result').classList.add('hidden');
+    }
+
+    update(); // 初回表示
+  </script>
+</body>
+</html>
