@@ -15,7 +15,7 @@
     <div class="border border-gray-200 shadow-sm rounded-lg p-8 space-y-8">
       <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div>
-          <label class="text-sm font-medium text-gray-700">開発費用</label>
+          <label class="text-sm font-medium text-gray-700">開発費用（総額）</label>
           <input id="totalCost" type="text" inputmode="numeric" pattern="[0-9,]*" value="1,000,000"
             class="mt-1 w-full border border-gray-300 rounded-md text-right p-2 shadow-sm focus:ring-2 focus:ring-indigo-500"/>
         </div>
@@ -40,6 +40,7 @@
             <option value="A">行事</option>
             <option value="B">加藤</option>
             <option value="C">松永</option>
+            <option value="ALL">全員で考えた</option>
           </select>
         </div>
       </div>
@@ -82,10 +83,6 @@
 
   <script>
     const parseNumber = s => Number(s.replace(/,/g, '')) || 0;
-    const sanitize = v => {
-      const d = v.replace(/[^0-9]/g, '');
-      return d === '' ? '' : Number(d).toLocaleString();
-    };
 
     const inputs = ['totalCost', 'a', 'b', 'c', 'owner'];
     inputs.forEach(id => {
@@ -105,7 +102,7 @@
       const sum = a + b + c;
 
       if (sum > total) {
-        showError("出資額の合計が行事出資額（総費用）を超えています。");
+        showError("出資額の合計が開発費用（総額）を超えています。");
         return;
       }
 
@@ -117,14 +114,18 @@
 
       const bonus = 5;
       const adj = { ...base };
-      adj[owner] += bonus;
 
-      const others = ['A', 'B', 'C'].filter(k => k !== owner);
-      const othersSum = others.reduce((s, k) => s + base[k], 0);
-      if (bonus > 0 && othersSum > 0) {
-        others.forEach(k => {
-          adj[k] -= (base[k] / othersSum) * bonus;
-        });
+      if (owner === 'ALL') {
+        // 全員で考えた場合：ボーナスなし（補正しない）
+      } else {
+        adj[owner] += bonus;
+        const others = ['A', 'B', 'C'].filter(k => k !== owner);
+        const othersSum = others.reduce((s, k) => s + base[k], 0);
+        if (othersSum > 0) {
+          others.forEach(k => {
+            adj[k] -= (base[k] / othersSum) * bonus;
+          });
+        }
       }
 
       const round1 = n => Math.round(n * 10) / 10;
